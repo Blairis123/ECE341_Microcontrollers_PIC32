@@ -1,0 +1,67 @@
+//LCDlib.c ------------------------------
+
+//LCD controller initialization
+//NEEDS TO HAPPEN AFTER PMP INIT1!!
+void LCDInit(void)
+{
+	LCDDelay(20);
+	writeLCD(0, 0x38); //8 bit data, 2 lines
+	LCDDelay(40);
+	writeLCD(0, 0x0f); //display on, cursor on, blink cursor on
+	LCDDelay(40);
+	writeLCD(0, 0x01); //Clear display
+}
+
+//Reads LCD, RS specifies instruction or data
+int readLCD(int addr)
+{
+	PMPSetAddress(addr); // Set LCD RS control
+	mPMPMasterReadByte(); // initiate dummy read sequence
+	return mPMPMasterReadByte();// read actual data
+} // End of readLCD
+
+//Polls the busy flag on the LCD controller and waits for desertion
+void busyLCD(void)
+{
+	//Poll busy flag and wait till it goes low
+	while((readLCD(0) & 10000000) != 0);
+	
+}
+
+//Writes to the LCD, RS specifies data or instruction
+void writeLCD(int addr, char c)
+{
+	while(busyLCD()); // Wait for LCD to be ready
+	PMPSetAddress(addr); // Set LCD RS control
+	PMPMasterWrite(c); // initiate write sequence
+} // End of writeLCD
+
+//Writes a string to the LCD
+void LCD_puts(char *char_string)
+{
+	while(*char_string) // Look for end of string NULL character
+	{
+		LCD_putc(*char_string); // Write character to LCD
+		char_string++; // Increment string pointer
+	}
+} //End of LCD_puts
+
+
+//Delays a given number of milliseconds (Hardware assisted delay)
+/*LCDDelay Function Description ******************************************
+* SYNTAX:         void LCDDelay(unsigned int mS);
+* DESCRIPTION: This is a millisecond delay function uses the core time
+*   to set the base millisecond delay period. Delay periods
+*   of zero are permitted. LEDA is toggled each millisecond.
+* KEYWORDS:  delay, ms, milliseconds, software delay, core timer
+* PARAMETER1: mS - the total number of milliseconds to delay
+* RETURN VALUE: None:
+* END DESCRIPTION *********************************************************/
+void LCDDelay(unsigned int mS)
+{
+    unsigned int tWait, tStart;
+    tStart = ReadCoreTimer();   //Read core timer count -- SW breakpoint
+    tWait = (CORE_MS_TICK_RATE * mS);    //Time to wait
+    while((ReadCoreTimer() - tStart) < tWait);  //Empty loop, whit for time
+    LATBINV = LEDA;
+}
